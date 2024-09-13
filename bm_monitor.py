@@ -26,13 +26,6 @@ from time import sleep
 if cfg.discord:
     from discord_webhook import DiscordWebhook, DiscordEmbed
 
-# libraries only needed if Telegram is configured in config.py
-# if cfg.telegram:
-#     import telebot 
-#     from telethon.sync import TelegramClient 
-#     from telethon.tl.types import InputPeerUser, InputPeerChannel 
-#     from telethon import TelegramClient, sync, events 
-
 # libraries only needed if dapnet or telegram is configured in config.py
 if cfg.dapnet or cfg.telegram:
     import requests
@@ -74,19 +67,6 @@ def push_pushover(msg):
     conn.getresponse()
 
 # Send push notification via Telegram. Disabled if not configured in config.py
-# def push_telegram(msg):
-#     client = TelegramClient('bm_bot', cfg.telegram_api_id, cfg.telegram_api_hash) 
-#     client.connect() 
-#     if not client.is_user_authorized(): 
-#         client.send_code_request(cfg.phone) 
-#         client.sign_in(cfg.phone, input('Please enter the code which has been sent to your phone: ')) 
-#     try: 
-#         receiver = InputPeerUser('user_id', 'user_hash') 
-#         client.send_message(cfg.telegram_username, msg) 
-#     except Exception as e: 
-#         print(e); 
-#     client.disconnect() 
-
 def push_telegram(msg):
     telegram_url = "https://api.telegram.org/bot" + cfg.telegram_api_hash + "/sendmessage"
 
@@ -94,7 +74,6 @@ def push_telegram(msg):
         telegram_url, json = msg, # data=json.dumps(msg),
         headers={'Content-Type': 'application/json'}
     )
-
 
 # send pager notification via DAPNET. Disabled if not configured in config.py
 def push_dapnet(msg):
@@ -107,6 +86,7 @@ def push_discord(wh_url, embed, session):
     discord_hook[session].add_embed(embed)
     response = discord_hook[session].execute()
 
+# Update notification to Discord Channel via webhook when transmisison completes
 def end_discord(wh_url, embed, session, duration):
     if duration > 0 and duration < 10:
         if cfg.debug:
@@ -118,7 +98,7 @@ def end_discord(wh_url, embed, session, duration):
         response = discord_hook[session].edit()
         del discord_hook[session]
 
-
+# Constuct Markdown message
 def construct_message(c,inprogress):
     tg = c["DestinationID"]
     out = ""
@@ -144,6 +124,7 @@ def construct_message(c,inprogress):
     # finally return the text message
     return out
 
+# Construct Discord embed
 def construct_embed(c,inprogress):
     duration = c["Stop"] - c["Start"]
     title=c["SourceCall"]
@@ -183,8 +164,6 @@ def on_mqtt(data):
 
     call = json.loads(data['payload'])
 
-    # if call["DestinationID"] in cfg.talkgroups:
-    #     print(call)
     session=call["SessionID"]
     tg = call["DestinationID"]
     callsign = call["SourceCall"]
