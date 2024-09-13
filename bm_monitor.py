@@ -1,17 +1,12 @@
 #################################################################################
 
 # Brandmeister Monitor
-# Develped by: Michael Clemens, DK1MI
-# Refactored by: Jeff Lehman, N8ACL
-# Current Version: 1.2
-# Original Script: https://codeberg.org/mclemens/pyBMNotify
-# Refactored Script: https://github.com/n8acl/bm_monitor
+# Mike Quin
 
-# Questions? Comments? Suggestions? Contact me one of the following ways:
-# E-mail: n8acl@qsl.net
-# Discord: Ravendos
-# Mastodon: @n8acl@mastodon.radio
-# Website: https://www.qsl.net/n8acl
+# Based on work by Michael Clemens, DK1MI and Jeff Lehman, N8ACL
+# https://codeberg.org/mclemens/pyBMNotify
+# https://github.com/n8acl/bm_monitor
+
 
 ###################   DO NOT CHANGE BELOW   #########################
 
