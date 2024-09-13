@@ -29,7 +29,7 @@ from time import sleep
 
 # libary only needed if Discord is configured in config.py
 if cfg.discord:
-    from discord_webhook import DiscordWebhook
+    from discord_webhook import DiscordWebhook, DiscordEmbed
 
 # libraries only needed if Telegram is configured in config.py
 # if cfg.telegram:
@@ -107,8 +107,9 @@ def push_dapnet(msg):
     response = requests.post(cfg.dapnet_url, data=dapnet_json, auth=HTTPBasicAuth(cfg.dapnet_user,cfg.dapnet_pass)) 
 
 # Send notification to Discord Channel via webhook
-def push_discord(wh_url, msg, session):
-    discord_hook[session] = DiscordWebhook(url=wh_url, content=msg)
+def push_discord(wh_url, embed, session):
+    discord_hook[session] = DiscordWebhook(url=wh_url)
+    discord_hook[session].add_embed(embed)
     response = discord_hook[session].execute()
 
 def update_discord(wh_url, msg, session):
@@ -116,13 +117,14 @@ def update_discord(wh_url, msg, session):
     discord_hook[session].content=msg   
     response = discord_hook[session].edit()
 
-def end_discord(wh_url, msg, session, duration):
-    discord_hook[session].content=msg
+def end_discord(wh_url, embed, session, duration):
     if duration > 0 and duration < 10:
         if cfg.verbose:
             print('waiting for ' + str(10 - duration) + ' seconds')
         sleep(10-duration)
     if session in discord_hook:
+        discord_hook[session].remove_embeds()
+        discord_hook[session].add_embed(embed)
         response = discord_hook[session].edit()
         del discord_hook[session]
 
@@ -152,6 +154,30 @@ def construct_message(c,inprogress):
     # finally return the text message
     return out
 
+def construct_embed(c,inprogress):
+    duration = c["Stop"] - c["Start"]
+    embed=DiscordEmbed(title=c["SourceCall"], url='https://qrz.com/db/' +  c["SourceCall"])
+    embed.set_color(color='ff0000')    
+    embed.add_embed_field(name="Destination", value=c["DestinationID"], inline=False)                     
+
+    # construct text message from various transmission properties
+    if not inprogress:
+        embed.set_color(color='00a8fc')    
+    if c["DestinationName"] != '':
+        embed.add_embed_field(name="TG Name", value=c["DestinationName"], inline=False)                     
+    # convert unix time stamp to human readable format
+    time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M")
+    embed.add_embed_field(name="Time", value=time + ' UTC', inline=False)                     
+
+    if  not inprogress:
+        if duration < 2:
+            strduration='kerchunk!'
+        else:
+            strduration=str(duration) + ' seconds'
+        embed.add_embed_field(name="Duration", value=strduration, inline=False)
+    else:
+        embed.add_embed_field(name="Duration", value='Talking now', inline=False)                   
+    return embed
 #############################
 ##### Define SocketIO Callback Functions
 
@@ -222,12 +248,12 @@ def on_mqtt(data):
             if cfg.discord:
                 if session in discord_hook:
                     if inprogress:
-                        update_discord(cfg.discord_wh_url, construct_message(call, inprogress), session)
+                        update_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session)
                     else:
-                        end_discord(cfg.discord_wh_url, construct_message(call, inprogress), session, call["Stop"] - call["Start"])
+                        end_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session, call["Stop"] - call["Start"])
 
                 else:
-                    push_discord(cfg.discord_wh_url, construct_message(call, inprogress), session )
+                    push_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session )
 
             if cfg.verbose:
                 print(construct_message(call,inprogress))
