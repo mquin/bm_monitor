@@ -23,6 +23,8 @@ import datetime as dt
 import time
 import socketio
 import http.client, urllib
+from time import sleep
+
 
 # libary only needed if Discord is configured in config.py
 if cfg.discord:
@@ -47,6 +49,14 @@ sio = socketio.Client()
 
 last_TG_activity = {}
 last_OM_activity = {}
+
+discord_hook={}
+
+DMRCallSign = {}
+with open("dmrid.dat") as f:
+    for line in f:
+       (key, val, junk) = line.split(';')
+       DMRCallSign[int(key)] = val
 
 #############################
 ##### Define Functions
@@ -91,20 +101,45 @@ def push_dapnet(msg):
     response = requests.post(cfg.dapnet_url, data=dapnet_json, auth=HTTPBasicAuth(cfg.dapnet_user,cfg.dapnet_pass)) 
 
 # Send notification to Discord Channel via webhook
-def push_discord(wh_url, msg):
-    webhook = DiscordWebhook(url=wh_url, content=msg)
-    response = webhook.execute()  
+def push_discord(wh_url, msg, session):
+    discord_hook[session] = DiscordWebhook(url=wh_url, content=msg)
+    response = discord_hook[session].execute()
 
-def construct_message(c):
+def update_discord(wh_url, msg, session):
+    return
+    discord_hook[session].content=msg   
+    response = discord_hook[session].edit()
+
+def end_discord(wh_url, msg, session, duration):
+    discord_hook[session].content=msg
+    if duration > 0 and duration < 10:
+        if cfg.verbose:
+            print('waiting for ' + str(10 - duration) + ' seconds')
+        sleep(10-duration)
+    if session in discord_hook:
+        response = discord_hook[session].edit()
+        del discord_hook[session]
+
+
+def construct_message(c,inprogress):
     tg = c["DestinationID"]
     out = ""
     duration = c["Stop"] - c["Start"]
+    # construct text message from various transmission properties
+    out += '[' + c["SourceCall"] + '](<https://qrz.com/db/' +  c["SourceCall"] + '>) (' + c["SourceName"] + ')'
+    if not inprogress:
+        out += ' was'
+    out += ' active on '
+    out += str(tg) + ' (' + c["DestinationName"] + ') at '
     # convert unix time stamp to human readable format
     time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M")
-    # construct text message from various transmission properties
-    out += c["SourceCall"] + ' (' + c["SourceName"] + ') was active on '
-    out += str(tg) + ' (' + c["DestinationName"] + ') at '
-    out += time + ' (' + str(duration) + ' seconds) UTC'
+    out += time + ' UTC'
+    if  not inprogress:
+        if duration < 2:
+            strduration='kerchunk!'
+        else:
+            strduration=str(duration)
+        out += ' (' + strduration + ')'
     # finally return the text message
     return out
 
@@ -117,23 +152,29 @@ def connect():
 
 @sio.on("mqtt")
 def on_mqtt(data):
+
     call = json.loads(data['payload'])
 
     # if call["DestinationID"] in cfg.talkgroups:
     #     print(call)
-
+    session=call["SessionID"]
     tg = call["DestinationID"]
     callsign = call["SourceCall"]
+    sourceid=call["SourceID"]
     start_time = call["Start"]
     stop_time = call["Stop"]
     event = call["Event"]
     notify = False
     now = int(time.time())
 
+    if callsign == '' and sourceid in DMRCallSign:
+        callsign=DMRCallSign[sourceid]
+        call["SourceCall"]=callsign
+
     if cfg.verbose and callsign in cfg.noisy_calls:
         print("ignored noisy ham " + callsign)
-    
-    elif event == 'Session-Stop' and callsign != '':
+
+    elif callsign != '':
         # check if callsign is monitored, the transmission has already been finished
         # and the person was inactive for n seconds
         if callsign in cfg.callsigns:
@@ -149,22 +190,20 @@ def on_mqtt(data):
                 notify = True
         # Continue if the talkgroup is monitored, the transmission has been
         # finished and there was no activity during the last n seconds in this talkgroup
-        elif tg in cfg.talkgroups and stop_time > 0:# and callsign not in cfg.noisy_calls:
-            if tg not in last_TG_activity:
-                last_TG_activity[tg] = 9999999
-            inactivity = now - last_TG_activity[tg]
-            # calculate duration of key down
-            duration = stop_time - start_time
-            # only proceed if the key down has been long enough
-            if duration >= cfg.min_duration:
-                if tg not in last_TG_activity or inactivity >= cfg.min_silence:
-                    notify = True
-                elif cfg.verbose:
-                    print("ignored activity in TG " + str(tg) + " from " + callsign + ": last action " + str(inactivity) + " seconds ago.")
-                last_TG_activity[tg] = now
-
+        elif tg in cfg.talkgroups:# and callsign not in cfg.noisy_calls:
+            notify=True
+            if event == 'Session-Stop' and not session in discord_hook:
+                notify=False
+                if cfg.verbose:
+                    print("Got session-stop for unknown session, not notifying")
+            if event == 'Session-Stop':
+                inprogress=False
+            else:
+                inprogress=True
 
         if notify:
+            print(event)
+            print(session)
             if cfg.pushover:
                 push_pushover(construct_message(call))
             if cfg.telegram:
@@ -172,7 +211,17 @@ def on_mqtt(data):
             if cfg.dapnet:
                 push_dapnet(construct_message(call))
             if cfg.discord:
-                push_discord(cfg.discord_wh_url, construct_message(call))
+                if session in discord_hook:
+                    if inprogress:
+                        update_discord(cfg.discord_wh_url, construct_message(call, inprogress), session)
+                    else:
+                        end_discord(cfg.discord_wh_url, construct_message(call, inprogress), session, call["Stop"] - call["Start"])
+
+                else:
+                    push_discord(cfg.discord_wh_url, construct_message(call, inprogress), session )
+
+            if cfg.verbose:
+                print(construct_message(call,inprogress))
 
 @sio.event
 def disconnect():
