@@ -146,7 +146,10 @@ def construct_message(c,inprogress):
 
 def construct_embed(c,inprogress):
     duration = c["Stop"] - c["Start"]
-    embed=DiscordEmbed(title=c["SourceCall"], url='https://qrz.com/db/' +  c["SourceCall"])
+    title=c["SourceCall"]
+    if c["SourceName"] != '':
+        title += ' (' + c["SourceName"] + ')'
+    embed=DiscordEmbed(title=title, url='https://qrz.com/db/' +  c["SourceCall"])
     embed.set_color(color='ff0000')    
     embed.add_embed_field(name="Destination", value=c["DestinationID"], inline=False)                     
 
@@ -228,11 +231,11 @@ def on_mqtt(data):
 
         if notify:
             if cfg.pushover and not inprogress:
-                push_pushover(construct_message(call))
+                push_pushover(construct_message(call, False))
             if cfg.telegram and not inprogress:
-                push_telegram({'text': construct_message(call), 'chat_id': cfg.telegram_api_id, "disable_notification": True})
+                push_telegram({'text': construct_message(call, False), 'chat_id': cfg.telegram_api_id, "disable_notification": True})
             if cfg.dapnet and not inprogress:
-                push_dapnet(construct_message(call))
+                push_dapnet(construct_message(call, False))
             if cfg.discord:
                 if session in discord_hook:
                     if not inprogress:
