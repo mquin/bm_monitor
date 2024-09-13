@@ -23,6 +23,7 @@ import datetime as dt
 import time
 import socketio
 import http.client, urllib
+import threading
 from time import sleep
 
 
@@ -53,10 +54,15 @@ last_OM_activity = {}
 discord_hook={}
 
 DMRCallSign = {}
-with open("dmrid.dat") as f:
-    for line in f:
-       (key, val, junk) = line.split(';')
-       DMRCallSign[int(key)] = val
+
+def dmrids():
+    with open("dmrid.dat") as f:
+        if cfg.verbose:
+            print('Loading dmrid.dat')
+        for line in f:
+            (key, val, junk) = line.split(';')
+            DMRCallSign[int(key)] = val
+    threading.Timer(21600, dmrids).start()
 
 #############################
 ##### Define Functions
@@ -130,7 +136,10 @@ def construct_message(c,inprogress):
     if not inprogress:
         out += ' was'
     out += ' active on '
-    out += str(tg) + ' (' + c["DestinationName"] + ') at '
+    out += str(tg) 
+    if c["DestinationName"] != '':
+        out += ' (' + c["DestinationName"] + ')'
+    out += ' at '
     # convert unix time stamp to human readable format
     time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M")
     out += time + ' UTC'
@@ -138,7 +147,7 @@ def construct_message(c,inprogress):
         if duration < 2:
             strduration='kerchunk!'
         else:
-            strduration=str(duration)
+            strduration=str(duration) + ' seconds'
         out += ' (' + strduration + ')'
     # finally return the text message
     return out
@@ -229,6 +238,6 @@ def disconnect():
 
 #############################
 ##### Main Program
-
+dmrids()
 sio.connect(url='https://api.brandmeister.network', socketio_path="/lh/socket.io", transports="websocket")
 sio.wait()
