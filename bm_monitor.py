@@ -107,14 +107,9 @@ def push_discord(wh_url, embed, session):
     discord_hook[session].add_embed(embed)
     response = discord_hook[session].execute()
 
-def update_discord(wh_url, msg, session):
-    return
-    discord_hook[session].content=msg   
-    response = discord_hook[session].edit()
-
 def end_discord(wh_url, embed, session, duration):
     if duration > 0 and duration < 10:
-        if cfg.verbose:
+        if cfg.debug:
             print('waiting for ' + str(10 - duration) + ' seconds')
         sleep(10-duration)
     if session in discord_hook:
@@ -240,11 +235,8 @@ def on_mqtt(data):
                 push_dapnet(construct_message(call))
             if cfg.discord:
                 if session in discord_hook:
-                    if inprogress:
-                        update_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session)
-                    else:
+                    if not inprogress:
                         end_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session, call["Stop"] - call["Start"])
-
                 else:
                     push_discord(cfg.discord_wh_url, construct_embed(call, inprogress), session )
 
