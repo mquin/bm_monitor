@@ -232,13 +232,11 @@ def on_mqtt(data):
                 inprogress=True
 
         if notify:
-            print(event)
-            print(session)
-            if cfg.pushover:
+            if cfg.pushover and not inprogress:
                 push_pushover(construct_message(call))
-            if cfg.telegram:
+            if cfg.telegram and not inprogress:
                 push_telegram({'text': construct_message(call), 'chat_id': cfg.telegram_api_id, "disable_notification": True})
-            if cfg.dapnet:
+            if cfg.dapnet and not inprogress:
                 push_dapnet(construct_message(call))
             if cfg.discord:
                 if session in discord_hook:
