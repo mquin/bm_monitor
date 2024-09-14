@@ -87,7 +87,7 @@ def push_dapnet(msg):
 
 # Send notification to Discord Channel via webhook
 def push_discord(wh_url, embed, session):
-    discord_hook[session] = DiscordWebhook(url=wh_url)
+    discord_hook[session] = DiscordWebhook(url=wh_url, username=cfg.discord_username)
     discord_hook[session].add_embed(embed)
     response = discord_hook[session].execute()
 
