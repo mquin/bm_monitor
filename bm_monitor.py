@@ -19,6 +19,7 @@ import time
 import socketio
 import http.client, urllib
 import threading
+from os import path
 from time import sleep
 
 
@@ -44,12 +45,16 @@ discord_hook={}
 DMRCallSign = {}
 
 def dmrids():
-    with open("dmrid.dat") as f:
-        if cfg.verbose:
-            print('Loading dmrid.dat')
-        for line in f:
-            (key, val, junk) = line.split(';')
-            DMRCallSign[int(key)] = val
+    if path.exists('dmrid.dat'):
+        DMRCallSign.clear()
+        with open("dmrid.dat") as f:
+            if cfg.verbose:
+                print('Loading dmrid.dat')
+            for line in f:
+                (key, val, junk) = line.split(';')
+                DMRCallSign[int(key)] = val
+            if cfg.verbose:
+                print('Loaded ' + str(len(DMRCallSign)) +' callsigns')
     threading.Timer(21600, dmrids).start()
 
 #############################
