@@ -118,7 +118,7 @@ def construct_message(c,inprogress):
         out += ' (' + c["DestinationName"] + ')'
     out += ' at '
     # convert unix time stamp to human readable format
-    time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M")
+    time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M:%S")
     out += time + ' UTC'
     if  not inprogress:
         if duration < 2:
@@ -145,7 +145,7 @@ def construct_embed(c,inprogress):
     if c["DestinationName"] != '':
         embed.add_embed_field(name="TG Name", value=c["DestinationName"], inline=False)                     
     # convert unix time stamp to human readable format
-    time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M")
+    time = dt.datetime.utcfromtimestamp(c["Start"]).strftime("%Y/%m/%d %H:%M:%S")
     embed.add_embed_field(name="Time", value=time + ' UTC', inline=False)                     
 
     if  not inprogress:
