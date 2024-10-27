@@ -51,8 +51,11 @@ def dmrids():
             if cfg.verbose:
                 print('Loading dmrid.dat')
             for line in f:
-                (key, val, junk) = line.split(';')
-                DMRCallSign[int(key)] = val
+                # (key, val, junk) = line.split(';')
+                DMRIdEntry=line.split(';')
+                if len(DMRIdEntry) != 3:
+                    continue
+                DMRCallSign[DMRIdEntry[0]] = DMRIdEntry[1]
             if cfg.verbose:
                 print('Loaded ' + str(len(DMRCallSign)) +' callsigns')
     threading.Timer(21600, dmrids).start()
