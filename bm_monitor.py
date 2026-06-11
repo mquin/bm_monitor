@@ -166,6 +166,7 @@ def construct_embed(c,inprogress):
 @sio.event
 def connect():
     print('connection established')
+    sio.emit("join","everything")
 
 @sio.on("mqtt")
 def on_mqtt(data):
