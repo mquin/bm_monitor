@@ -166,9 +166,9 @@ def construct_embed(c,inprogress):
 @sio.event
 def connect():
     print('connection established')
-    for tg in talkgroups:
+    for tg in cfg.talkgroups:
         sio.emit("join",f"dst_{tg}")
-}
+
 @sio.on("mqtt")
 def on_mqtt(data):
 
